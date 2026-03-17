@@ -1,0 +1,63 @@
+// Colors
+  // Primary colors
+  $bg-primary: #0f0f0f;
+  $bg-secondary: #1a1a1a;
+  $bg-tertiary: #262626;
+  $bg-hover: #2a2a2a;
+  
+  // RGB values for alpha usage
+  $bg-primary-rgb: 10, 10, 15;
+  $bg-secondary-rgb: 18, 18, 26;
+  
+  // Text colors
+  $text-primary: #ffffff;
+  $text-secondary: #a3a3a3;
+  $text-tertiary: #737373;
+  
+  // Accent colors
+  $accent-primary: #3b82f6;
+  $accent-secondary: #8b5cf6;
+  $accent-tertiary: #06b6d4;
+  $accent-hover: #2563eb;
+  
+  // RGB values for alpha usage
+  $accent-primary-rgb: 59, 130, 246;
+  $accent-secondary-rgb: 139, 92, 246;
+  $accent-tertiary-rgb: 6, 182, 212;
+  
+  // Border colors
+  $border-primary: #2a2a2a;
+  $border-secondary: #404040;
+  
+  // Gradients
+  $gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  $gradient-secondary: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+  $gradient-tertiary: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
+  
+  // Shadows
+  $shadow-small: 0 2px 8px rgba(0, 0, 0, 0.1);
+  $shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.15);
+  $shadow-large: 0 8px 32px rgba(0, 0, 0, 0.2);
+  $shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  $shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  $shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  // Border radius
+  $radius-small: 8px;
+  $radius-medium: 12px;
+  $radius-large: 16px;
+  $radius-xl: 24px;
+  
+  // Spacing
+  $spacing-xs: 0.25rem;
+  $spacing-sm: 0.5rem;
+  $spacing-md: 1rem;
+  $spacing-lg: 1.5rem;
+  $spacing-xl: 2rem;
+  $spacing-2xl: 3rem;
+  $spacing-3xl: 4rem;
+  
+  // Breakpoints
+  $breakpoint-mobile: 768px;
+  $breakpoint-tablet: 1024px;
+  $breakpoint-desktop: 1200px;

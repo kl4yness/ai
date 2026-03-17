@@ -1,0 +1,90 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.inputArea {
+  border-top: 1px solid $border-primary;
+  background: $bg-secondary;
+  padding: 1rem 1.5rem;
+}
+
+.inputContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.attachBtn,
+.voiceBtn {
+  padding: 0.75rem;
+  display: flex;
+  color: $text-secondary;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background: $bg-hover;
+    color: $text-primary;
+  }
+}
+
+.inputWrapper {
+  flex: 1;
+  position: relative;
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  max-height: 120px;
+  padding: 0.75rem 1rem;
+  background: $bg-primary;
+  border: 1px solid $border-primary;
+  border-radius: 12px;
+  color: $text-primary;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  display: flex;
+  transition: all 0.2s ease;
+
+  &::placeholder {
+    color: $text-tertiary;
+  }
+
+  &:focus {
+    border-color: $accent-primary;
+  }
+}
+
+.sendBtn {
+  padding: 0.75rem;
+  background: $accent-primary;
+  color: white;
+  border-radius: 8px;
+  display: flex;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background: $accent-hover;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.footer {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.disclaimer {
+  font-size: 0.75rem;
+  color: $text-tertiary;
+}

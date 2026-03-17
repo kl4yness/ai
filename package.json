@@ -1,0 +1,29 @@
+{
+  "name": "pet-project",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@openrouter/sdk": "^0.9.11",
+    "lucide-react": "^0.536.0",
+    "nanoid": "^5.1.5",
+    "next": "15.4.5",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-textarea-autosize": "^8.5.9",
+    "saas": "^1.0.0",
+    "sass": "^1.90.0",
+    "zustand": "^5.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}
