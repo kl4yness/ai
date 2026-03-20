@@ -110,49 +110,101 @@ export class CreditScoring {
   }
 
   extractDataFromMessage(message: string, currentData: UserCreditData): UserCreditData {
-    const newData = { ...currentData };
-    const lowerMessage = message.toLowerCase();
+  const newData = { ...currentData };
+  const lowerMessage = message.toLowerCase();
 
-    // Возраст
-    const ageMatch = message.match(/(\d+)\s*(?:лет|год|года)/i);
-    if (ageMatch) newData.age = parseInt(ageMatch[1]);
+  // Возраст
+  const ageMatch = message.match(/(\d+)\s*(?:лет|год|года)/i);
+  if (ageMatch) newData.age = parseInt(ageMatch[1]);
 
-    // Зарплата
-    const salaryMatch = message.match(/(\d+)\s*(?:тыс|тысяч|руб|р\.|рублей)/i);
-    if (salaryMatch) {
-      let salary = parseInt(salaryMatch[1]);
-      if (message.includes('тыс') || message.includes('тысяч')) salary *= 1000;
-      newData.salary = salary;
-    }
-
-    // Работа
-    if (lowerMessage.includes('работаю') || lowerMessage.includes('трудоустроен') || lowerMessage.includes('официально')) {
-      newData.hasJob = true;
-      const yearsMatch = message.match(/(\d+)\s*(?:год|года|лет)/i);
-      if (yearsMatch) newData.jobYears = parseInt(yearsMatch[1]);
-    }
-    if (lowerMessage.includes('не работаю') || lowerMessage.includes('безработный')) {
-      newData.hasJob = false;
-    }
-
-    // Кредитная история
-    if (lowerMessage.includes('идеальная') || lowerMessage.includes('отличная')) newData.creditHistory = 'excellent';
-    else if (lowerMessage.includes('хорошая')) newData.creditHistory = 'good';
-    else if (lowerMessage.includes('средняя') || lowerMessage.includes('нормальная')) newData.creditHistory = 'fair';
-    else if (lowerMessage.includes('плохая') || lowerMessage.includes('испорчена')) newData.creditHistory = 'poor';
-    else if (lowerMessage.includes('нет истории') || lowerMessage.includes('не было кредитов')) newData.creditHistory = 'none';
-
-    // Имущество
-    if (lowerMessage.includes('квартир')) newData.property = [...(newData.property || []), 'flat'];
-    if (lowerMessage.includes('машин') || lowerMessage.includes('авто')) newData.property = [...(newData.property || []), 'car'];
-    if (lowerMessage.includes('дом') || lowerMessage.includes('дача')) newData.property = [...(newData.property || []), 'house'];
-
-    // Другие кредиты
-    if (lowerMessage.includes('есть кредит') || lowerMessage.includes('плачу кредит')) newData.hasOtherCredits = true;
-    if (lowerMessage.includes('нет других кредитов') || lowerMessage.includes('нет кредитов')) newData.hasOtherCredits = false;
-
-    return newData;
+  // Зарплата
+  const salaryMatch = message.match(/(\d+)\s*(?:тыс|тысяч|руб|р\.|рублей)/i);
+  if (salaryMatch) {
+    let salary = parseInt(salaryMatch[1]);
+    if (message.includes('тыс') || message.includes('тысяч')) salary *= 1000;
+    newData.salary = salary;
   }
+
+  // Работа
+  if (lowerMessage.includes('работаю') || lowerMessage.includes('трудоустроен') || lowerMessage.includes('официально')) {
+    newData.hasJob = true;
+    const yearsMatch = message.match(/(\d+)\s*(?:год|года|лет)/i);
+    if (yearsMatch) newData.jobYears = parseInt(yearsMatch[1]);
+  }
+  if (lowerMessage.includes('не работаю') || lowerMessage.includes('безработный')) {
+    newData.hasJob = false;
+  }
+
+  // 🔥 Кредитная история — РАСШИРЕННОЕ РАСПОЗНАВАНИЕ
+  // 1. Множественные кредиты или крупные суммы
+  if (lowerMessage.includes('два кредита') || 
+      lowerMessage.includes('три кредита') ||
+      lowerMessage.includes('несколько кредитов') ||
+      lowerMessage.includes('много кредитов') ||
+      (lowerMessage.includes('кредит') && (lowerMessage.includes('миллион') || lowerMessage.includes('млн')))) {
+    newData.creditHistory = 'poor';
+    newData.hasOtherCredits = true;
+  }
+  // 2. Просрочки и долги
+  else if (lowerMessage.includes('просрочк') || 
+           lowerMessage.includes('долг') || 
+           lowerMessage.includes('не платил') ||
+           lowerMessage.includes('задолженность')) {
+    newData.creditHistory = 'poor';
+  }
+  // 3. Есть текущие кредиты (без оценки качества)
+  else if (lowerMessage.includes('есть кредит') || 
+           lowerMessage.includes('плачу кредит') ||
+           (lowerMessage.includes('кредит') && lowerMessage.includes('сейчас'))) {
+    newData.hasOtherCredits = true;
+    if (!newData.creditHistory) {
+      newData.creditHistory = 'fair';
+    }
+  }
+  // 4. Стандартные оценки
+  else if (lowerMessage.includes('идеальная') || lowerMessage.includes('отличная')) {
+    newData.creditHistory = 'excellent';
+  }
+  else if (lowerMessage.includes('хорошая')) {
+    newData.creditHistory = 'good';
+  }
+  else if (lowerMessage.includes('средняя') || lowerMessage.includes('нормальная')) {
+    newData.creditHistory = 'fair';
+  }
+  else if (lowerMessage.includes('плохая') || lowerMessage.includes('испорчена')) {
+    newData.creditHistory = 'poor';
+  }
+  else if (lowerMessage.includes('нет истории') || lowerMessage.includes('не было кредитов')) {
+    newData.creditHistory = 'none';
+  }
+
+  // Имущество
+  if (lowerMessage.includes('квартир')) newData.property = [...(newData.property || []), 'flat'];
+  if (lowerMessage.includes('машин') || lowerMessage.includes('авто')) newData.property = [...(newData.property || []), 'car'];
+  if (lowerMessage.includes('дом') || lowerMessage.includes('дача')) newData.property = [...(newData.property || []), 'house'];
+
+  // Другие кредиты (дополнительная проверка)
+  if (lowerMessage.includes('есть кредит') || 
+      lowerMessage.includes('плачу кредит') ||
+      lowerMessage.includes('два кредита')) {
+    newData.hasOtherCredits = true;
+  }
+  if (lowerMessage.includes('нет других кредитов') || 
+      lowerMessage.includes('нет кредитов') ||
+      lowerMessage.includes('кредитов нет')) {
+    newData.hasOtherCredits = false;
+  }
+
+  console.log('📝 Извлечённые данные:', {
+    age: newData.age,
+    hasJob: newData.hasJob,
+    salary: newData.salary,
+    creditHistory: newData.creditHistory,
+    hasOtherCredits: newData.hasOtherCredits
+  });
+
+  return newData;
+}
 
   getSystemPrompt(userData?: UserCreditData, chatTitle?: string): string {
     const missingFields = userData ? this.getMissingFields(userData) : this.getRequiredFields();
