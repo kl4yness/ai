@@ -113,9 +113,15 @@ export class CreditScoring {
   const newData = { ...currentData };
   const lowerMessage = message.toLowerCase();
 
-  // Возраст
+  // 🔥 ВАЖНО: ищем возраст ТОЛЬКО если сообщение короткое и содержит число
+  // и если это не про стаж
   const ageMatch = message.match(/(\d+)\s*(?:лет|год|года)/i);
-  if (ageMatch) newData.age = parseInt(ageMatch[1]);
+  if (ageMatch && !lowerMessage.includes('стаж') && !lowerMessage.includes('работа')) {
+    const age = parseInt(ageMatch[1]);
+    if (age >= 16 && age <= 100) {
+      newData.age = age;
+    }
+  }
 
   // Зарплата
   const salaryMatch = message.match(/(\d+)\s*(?:тыс|тысяч|руб|р\.|рублей)/i);
@@ -125,44 +131,30 @@ export class CreditScoring {
     newData.salary = salary;
   }
 
-  // Работа
-  if (lowerMessage.includes('работаю') || lowerMessage.includes('трудоустроен') || lowerMessage.includes('официально')) {
+  // Работа — РАСШИРЕННОЕ РАСПОЗНАВАНИЕ
+  if (lowerMessage.includes('работаю') || 
+      lowerMessage.includes('трудоустроен') || 
+      lowerMessage.includes('официально') ||
+      lowerMessage.includes('есть работа') ||
+      (lowerMessage.includes('стаж') && !lowerMessage.includes('нет стажа'))) {
     newData.hasJob = true;
+    
+    // Ищем стаж
     const yearsMatch = message.match(/(\d+)\s*(?:год|года|лет)/i);
-    if (yearsMatch) newData.jobYears = parseInt(yearsMatch[1]);
+    if (yearsMatch) {
+      newData.jobYears = parseInt(yearsMatch[1]);
+    }
   }
-  if (lowerMessage.includes('не работаю') || lowerMessage.includes('безработный')) {
+  
+  if (lowerMessage.includes('не работаю') || 
+      lowerMessage.includes('безработный') ||
+      lowerMessage.includes('нет работы') ||
+      lowerMessage.includes('работы нет')) {
     newData.hasJob = false;
   }
 
-  // 🔥 Кредитная история — РАСШИРЕННОЕ РАСПОЗНАВАНИЕ
-  // 1. Множественные кредиты или крупные суммы
-  if (lowerMessage.includes('два кредита') || 
-      lowerMessage.includes('три кредита') ||
-      lowerMessage.includes('несколько кредитов') ||
-      lowerMessage.includes('много кредитов') ||
-      (lowerMessage.includes('кредит') && (lowerMessage.includes('миллион') || lowerMessage.includes('млн')))) {
-    newData.creditHistory = 'poor';
-    newData.hasOtherCredits = true;
-  }
-  // 2. Просрочки и долги
-  else if (lowerMessage.includes('просрочк') || 
-           lowerMessage.includes('долг') || 
-           lowerMessage.includes('не платил') ||
-           lowerMessage.includes('задолженность')) {
-    newData.creditHistory = 'poor';
-  }
-  // 3. Есть текущие кредиты (без оценки качества)
-  else if (lowerMessage.includes('есть кредит') || 
-           lowerMessage.includes('плачу кредит') ||
-           (lowerMessage.includes('кредит') && lowerMessage.includes('сейчас'))) {
-    newData.hasOtherCredits = true;
-    if (!newData.creditHistory) {
-      newData.creditHistory = 'fair';
-    }
-  }
-  // 4. Стандартные оценки
-  else if (lowerMessage.includes('идеальная') || lowerMessage.includes('отличная')) {
+  // Кредитная история — РАСШИРЕННОЕ РАСПОЗНАВАНИЕ
+  if (lowerMessage.includes('идеальная') || lowerMessage.includes('отличная')) {
     newData.creditHistory = 'excellent';
   }
   else if (lowerMessage.includes('хорошая')) {
@@ -171,24 +163,32 @@ export class CreditScoring {
   else if (lowerMessage.includes('средняя') || lowerMessage.includes('нормальная')) {
     newData.creditHistory = 'fair';
   }
-  else if (lowerMessage.includes('плохая') || lowerMessage.includes('испорчена')) {
+  else if (lowerMessage.includes('плохая') || lowerMessage.includes('испорчена') ||
+           lowerMessage.includes('просрочк') || lowerMessage.includes('долг')) {
     newData.creditHistory = 'poor';
   }
-  else if (lowerMessage.includes('нет истории') || lowerMessage.includes('не было кредитов')) {
+  else if (lowerMessage.includes('нет истории') || 
+           lowerMessage.includes('не было кредитов') ||
+           lowerMessage.includes('кредитной истории нет') ||
+           lowerMessage.includes('кредитов не было')) {
     newData.creditHistory = 'none';
   }
 
-  // Имущество
-  if (lowerMessage.includes('квартир')) newData.property = [...(newData.property || []), 'flat'];
-  if (lowerMessage.includes('машин') || lowerMessage.includes('авто')) newData.property = [...(newData.property || []), 'car'];
-  if (lowerMessage.includes('дом') || lowerMessage.includes('дача')) newData.property = [...(newData.property || []), 'house'];
+  // Множественные кредиты
+  if (lowerMessage.includes('два кредита') || 
+      lowerMessage.includes('три кредита') ||
+      lowerMessage.includes('много кредитов')) {
+    newData.creditHistory = 'poor';
+    newData.hasOtherCredits = true;
+  }
 
-  // Другие кредиты (дополнительная проверка)
+  // Другие кредиты
   if (lowerMessage.includes('есть кредит') || 
       lowerMessage.includes('плачу кредит') ||
       lowerMessage.includes('два кредита')) {
     newData.hasOtherCredits = true;
   }
+  
   if (lowerMessage.includes('нет других кредитов') || 
       lowerMessage.includes('нет кредитов') ||
       lowerMessage.includes('кредитов нет')) {
@@ -198,6 +198,7 @@ export class CreditScoring {
   console.log('📝 Извлечённые данные:', {
     age: newData.age,
     hasJob: newData.hasJob,
+    jobYears: newData.jobYears,
     salary: newData.salary,
     creditHistory: newData.creditHistory,
     hasOtherCredits: newData.hasOtherCredits
