@@ -150,32 +150,50 @@ export async function requestAI(messages: Message[], chatId: string) {
 
         console.log("📦 Ответ модели:", data);
 
-        // Безопасно извлекаем текст из разных форматов ответа
+       console.log("📦 Ответ модели:", data);
+
+// ✅ Безопасное извлечение текста из разных форматов
 let answer: string | null = null;
+const choice = data?.choices?.[0];
+const message = choice?.message;
+const delta = choice?.delta;
 
-if (data?.choices?.[0]?.message?.content) {
-  answer = data.choices[0].message.content.trim();
-} 
-else if (data?.choices?.[0]?.delta?.content) {
-  // Для стриминговых ответов
-  answer = data.choices[0].delta.content.trim();
+// 1. Сначала пробуем взять content
+if (message?.content && message.content.trim() !== '') {
+  answer = message.content.trim();
 }
-else if (data?.choices?.[0]?.text) {
-  // Для некоторых моделей
-  answer = data.choices[0].text.trim();
+// 2. Если content пустой, но есть reasoning (модель думает)
+else if (message?.reasoning && message.reasoning.trim() !== '') {
+  console.log(`🧠 Модель ${model} вернула reasoning вместо content`);
+  answer = message.reasoning.trim();
 }
-else if (typeof data === 'string') {
-  // Если вдруг вернулась строка
-  answer = data.trim();
+// 3. Для стриминговых ответов
+else if (delta?.content && delta.content.trim() !== '') {
+  answer = delta.content.trim();
+}
+// 4. Для некоторых моделей (text-поле)
+else if (choice?.text && choice.text.trim() !== '') {
+  answer = choice.text.trim();
+}
+// 5. Если finish_reason = "length" — обрезано из-за лимита
+else if (choice?.finish_reason === 'length') {
+  console.warn(`⚠️ Ответ от ${model} обрезан из-за max_tokens`);
+  // Берём то, что есть в reasoning (даже если неполное)
+  if (message?.reasoning) {
+    answer = message.reasoning.trim() + "... (ответ обрезан)";
+  }
 }
 
-// Если не удалось извлечь текст — логируем структуру для отладки
-if (!answer) {
-  console.warn(`⚠️ Неизвестная структура ответа от ${model}:`, JSON.stringify(data, null, 2).slice(0, 500));
-  lastError = new Error("Unknown response structure");
+// Если всё ещё пусто — логируем и пропускаем модель
+if (!answer || answer === '') {
+  console.warn(`⚠️ Пустой ответ от ${model}`);
+  console.warn('🔍 Структура:', JSON.stringify(data, null, 2).slice(0, 800));
+  lastError = new Error("Empty response");
   await delay(1500);
   continue;
 }
+
+console.log(`✅ Успешный ответ от ${model}:`, answer.slice(0, 150));
         addMessage(chatId, {
           id: nanoid(),
           role: "assistant",
