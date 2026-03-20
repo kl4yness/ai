@@ -185,6 +185,7 @@ export class CreditScoring {
            lowerMessage.includes('не было кредитов') ||
            lowerMessage.includes('кредитной истории нет') ||
            lowerMessage.includes('кредитов не было') ||
+           lowerMessage.includes('нет') ||
            lowerMessage.includes('нет кредитной')) {
     newData.creditHistory = 'none';
     console.log(`✅ Кредитная история: none`);
