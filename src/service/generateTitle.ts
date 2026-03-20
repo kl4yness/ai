@@ -23,124 +23,95 @@ export async function generateTitle(messages: Message[], chatId: string) {
     return;
   }
 
-  // 🔥 Модели
-  const models = [
-  "google/gemini-2.0-flash-exp:free",
-  "qwen/qwen3-next-80b-a3b-instruct:free",
-  "mistralai/mistral-7b-instruct:free"
-];
+  // 🔥 ОДНА МОДЕЛЬ
+  const model = "nvidia/nemotron-3-super-120b-a12b:free";
 
-  let lastError: any = null;
+  try {
+    console.log(`🔄 Генерация заголовка: ${model}`);
 
-  for (const model of models) {
-    try {
-      console.log(`🔄 Генерация заголовка: ${model}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "user",
+            content: `Кратко назови этот разговор (3-5 слов): ${cleanMessage}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 20,
+      }),
+      signal: controller.signal,
+    });
 
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "user",
-              content: `Кратко назови этот разговор (3-5 слов): ${cleanMessage}`
-            }
-          ],
-          temperature: 0.1,  // минимальная температура для предсказуемости
-          max_tokens: 20,
-        }),
-        signal: controller.signal,
-      });
+    clearTimeout(timeoutId);
 
-      clearTimeout(timeoutId);
-
-      if (!res.ok) {
-        let error;
-        try {
-          error = await res.json();
-        } catch {
-          error = await res.text();
-        }
-        console.error(`❌ Ошибка ${model}:`, error);
-        lastError = error;
-        continue;
-      }
-
-      let data;
+    if (!res.ok) {
+      let error;
       try {
-        data = await res.json();
+        error = await res.json();
       } catch {
-        console.error("❌ JSON parse error");
-        continue;
+        error = await res.text();
       }
-
-      // ✅ Извлекаем ответ
-      const choice = data?.choices?.[0];
-      let rawTitle: string | null = null;
-
-      if (choice?.message?.content?.trim()) {
-        rawTitle = choice.message.content.trim();
-      } else if (choice?.message?.reasoning?.trim()) {
-        // Если пришло reasoning — возможно, модель не поняла задачу
-        console.warn(`⚠️ Модель ${model} вернула reasoning вместо заголовка`);
-        continue;  // пропускаем эту модель
-      }
-
-      if (!rawTitle) {
-        console.warn(`⚠️ Пустой заголовок от ${model}`);
-        continue;
-      }
-
-      // 🔧 Жёсткая очистка
-      let title = rawTitle
-        .replace(/["'"]/g, '')
-        .replace(/^(заголовок|название|тема|кратко|назови):?\s*/i, '')
-        .replace(/^(we need to|i need to|output|generate|create|make|provide)/i, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      // Обрезаем до 5 слов
-      const words = title.split(/\s+/);
-      if (words.length > 5) {
-        title = words.slice(0, 5).join(' ');
-      }
-
-      // Если после чистки пусто или слишком длинно
-      if (!title || title.length === 0 || title.length > 50) {
-        console.warn(`⚠️ Заголовок от ${model} не прошёл валидацию`);
-        continue;
-      }
-
-      // Дополнительная проверка: если заголовок похож на английскую инструкцию
-      if (/^(we|i|you|the|please|here|this|that)/i.test(title)) {
-        console.warn(`⚠️ Заголовок от ${model} похож на инструкцию: ${title}`);
-        continue;
-      }
-
-      console.log(`✅ Заголовок от ${model}: ${title}`);
-
-      setChatTitle(chatId, title);
-      return;
-
-    } catch (error: any) {
-      if (error.name === "AbortError") {
-        console.log(`⏱️ Таймаут модели ${model}`);
-      } else {
-        console.error(`❌ Ошибка модели ${model}:`, error);
-      }
-      lastError = error;
+      console.error(`❌ Ошибка ${model}:`, error);
+      throw new Error(`API error: ${res.status}`);
     }
+
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      console.error("❌ JSON parse error");
+      throw new Error("JSON parse error");
+    }
+
+    // ✅ Простое извлечение заголовка
+    let rawTitle: string | null = null;
+    const message = data?.choices?.[0]?.message;
+
+    if (message?.content && message.content.trim() !== '') {
+      rawTitle = message.content.trim();
+    }
+
+    if (!rawTitle) {
+      console.warn(`⚠️ Пустой заголовок от ${model}`);
+      throw new Error("Empty title");
+    }
+
+    // 🔧 Чистим
+    let title = rawTitle
+      .replace(/["'"]/g, '')
+      .replace(/^(заголовок|название|тема|кратко|назови):?\s*/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Обрезаем до 5 слов
+    const words = title.split(/\s+/);
+    if (words.length > 5) {
+      title = words.slice(0, 5).join(' ');
+    }
+
+    if (!title || title.length === 0) {
+      console.warn(`⚠️ Заголовок от ${model} пустой после чистки`);
+      throw new Error("Empty title after cleaning");
+    }
+
+    console.log(`✅ Заголовок от ${model}: ${title}`);
+
+    setChatTitle(chatId, title);
+
+  } catch (error: any) {
+    console.error(`❌ Ошибка генерации заголовка:`, error);
+    
+    // ❌ Fallback — первые 4 слова сообщения
+    const fallback = cleanMessage.split(/\s+/).slice(0, 4).join(" ");
+    setChatTitle(chatId, fallback.slice(0, 50) || "Диалог");
   }
-
-  // ❌ Fallback — первые 4 слова сообщения
-  console.error("💥 Не удалось сгенерировать заголовок:", lastError);
-
-  const fallback = cleanMessage.split(/\s+/).slice(0, 4).join(" ");
-  setChatTitle(chatId, fallback.slice(0, 50) || "Диалог");
 }
