@@ -23,17 +23,21 @@ export async function generateTitle(messages: Message[], chatId: string) {
   }
 
   // 🔥 Нормальные модели
-  const models = ["deepseek/deepseek-chat-v3-0324:free",     
-  "google/gemini-2.0-flash-exp:free",         
-  "nvidia/nemotron-3-super-120b-a12b:free",          
-  "qwen/qwen3-next-80b-a3b-instruct:free"];
-
+  const models = [
+    "google/gemini-2.0-flash-exp:free",  // Gemini ставим первой, у неё стабильный content
+    "deepseek/deepseek-chat-v3-0324:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "qwen/qwen3-next-80b-a3b-instruct:free"
+  ];
 
   let lastError: any = null;
 
   for (const model of models) {
     try {
       console.log(`🔄 Генерация заголовка: ${model}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -46,7 +50,7 @@ export async function generateTitle(messages: Message[], chatId: string) {
             {
               role: "system",
               content:
-                "Ты создаёшь короткие названия чатов. Ответ — ТОЛЬКО заголовок (3-5 слов), без кавычек.",
+                "Ты создаёшь короткие названия чатов. Ответ — ТОЛЬКО заголовок (3-5 слов), без кавычек, без пояснений.",
             },
             {
               role: "user",
@@ -54,9 +58,12 @@ export async function generateTitle(messages: Message[], chatId: string) {
             },
           ],
           temperature: 0.3,
-          max_tokens: 20,
+          max_tokens: 30,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         let error;
@@ -74,15 +81,31 @@ export async function generateTitle(messages: Message[], chatId: string) {
       let data;
       try {
         data = await res.json();
-      } catch {
-        console.error("❌ JSON parse error");
+      } catch (e) {
+        console.error("❌ JSON parse error", e);
         continue;
       }
 
-      const rawTitle = data?.choices?.[0]?.message?.content?.trim();
+      // ✅ Улучшенное извлечение текста с поддержкой reasoning
+      const choice = data?.choices?.[0];
+      let rawTitle: string | null = null;
+
+      // 1. Сначала content
+      if (choice?.message?.content?.trim()) {
+        rawTitle = choice.message.content.trim();
+      }
+      // 2. Если content пустой, но есть reasoning (Nvidia, DeepSeek)
+      else if (choice?.message?.reasoning?.trim()) {
+        console.log(`🧠 ${model} вернул заголовок через reasoning`);
+        rawTitle = choice.message.reasoning.trim();
+      }
+      // 3. Для стриминга
+      else if (choice?.delta?.content?.trim()) {
+        rawTitle = choice.delta.content.trim();
+      }
 
       if (!rawTitle) {
-        console.error("❌ Пустой заголовок", data);
+        console.warn(`⚠️ Пустой заголовок от ${model}`);
         continue;
       }
 
@@ -92,20 +115,28 @@ export async function generateTitle(messages: Message[], chatId: string) {
         .replace(/[^\p{L}\p{N}\s.,!?-]/gu, "")
         .trim();
 
+      // Если после чистки ничего не осталось — пробуем следующую модель
       if (!title) {
-        throw new Error("Empty title after clean");
+        console.warn(`⚠️ Заголовок от ${model} стал пустым после чистки`);
+        continue;
       }
 
+      // Обрезаем длинные заголовки
       if (title.length > 50) {
         title = title.slice(0, 47) + "...";
       }
 
-      console.log(`✅ Заголовок: ${title}`);
+      console.log(`✅ Заголовок от ${model}: ${title}`);
 
       setChatTitle(chatId, title);
       return;
-    } catch (error) {
-      console.error(`❌ Ошибка модели ${model}:`, error);
+
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        console.log(`⏱️ Таймаут модели ${model}`);
+      } else {
+        console.error(`❌ Ошибка модели ${model}:`, error);
+      }
       lastError = error;
     }
   }
@@ -114,5 +145,5 @@ export async function generateTitle(messages: Message[], chatId: string) {
   console.error("💥 Не удалось сгенерировать заголовок:", lastError);
 
   const fallback = cleanMessage.split(" ").slice(0, 4).join(" ");
-  setChatTitle(chatId, fallback || "Новый диалог");
+  setChatTitle(chatId, fallback.slice(0, 50) || "Новый диалог");
 }
