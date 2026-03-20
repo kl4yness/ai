@@ -177,7 +177,7 @@ export class CreditScoring {
     console.log(`✅ Кредитная история: fair`);
   }
   else if (lowerMessage.includes('плохая') || lowerMessage.includes('испорчена') ||
-           lowerMessage.includes('просрочк') || lowerMessage.includes('долг')) {
+           lowerMessage.includes('просрочк') || lowerMessage.includes('долг')) || lowerMessage.includes('нет')) {
     newData.creditHistory = 'poor';
     console.log(`✅ Кредитная история: poor`);
   }
@@ -200,7 +200,7 @@ export class CreditScoring {
   }
   
   if (lowerMessage.includes('нет других кредитов') || 
-      lowerMessage.includes('нет кредитов')) {
+      lowerMessage.includes('нет кредитов')) || lowerMessage.includes('нет')) {
     newData.hasOtherCredits = false;
     console.log(`✅ Есть другие кредиты: false`);
   }
