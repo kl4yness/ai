@@ -25,10 +25,10 @@ export async function generateTitle(messages: Message[], chatId: string) {
 
   // 🔥 Модели
   const models = [
-    "deepseek/deepseek-chat-v3-0324:free",  // DeepSeek ставим первой
-    "google/gemini-2.0-flash-exp:free",
-    "nvidia/nemotron-3-super-120b-a12b:free"
-  ];
+  "google/gemini-2.0-flash-exp:free",
+  "qwen/qwen3-next-80b-a3b-instruct:free",
+  "mistralai/mistral-7b-instruct:free"
+];
 
   let lastError: any = null;
 
