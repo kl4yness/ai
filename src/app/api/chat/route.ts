@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }));
 
     const requestBody = {
-      model: 'openrouter/hunter-alpha',
+      model: 'qwen/qwen3-next-80b-a3b-instruct:free',
       messages,
       temperature: body.temperature ?? 0.3,
       max_tokens: body.max_tokens ?? 500,
