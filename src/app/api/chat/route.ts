@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }));
 
     const requestBody = {
-      model: 'deepseek/deepseek-chat-v3-0324:free',
+      model: 'nvidia/nemotron-3-super-120b-a12b:free',
       messages,
       temperature: body.temperature ?? 0.3,
       max_tokens: body.max_tokens ?? 500,
