@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
       messages,
       temperature: body.temperature ?? 0.3,
       max_tokens: body.max_tokens ?? 500,
+      reasoning: { enabled: false }, 
     };
 
     console.log("➡️ Запрос к OpenRouter:", requestBody.model);
