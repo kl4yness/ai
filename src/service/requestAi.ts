@@ -84,7 +84,7 @@ export async function requestAI(messages: Message[], chatId: string) {
     ];
 
     // 🔥 НОРМАЛЬНЫЕ модели
-    const models = ["openrouter/hunter-alpha"];
+    const models = ["qwen/qwen3-next-80b-a3b-instruct:free"];
 
     let lastError: any = null;
 
