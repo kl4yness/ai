@@ -23,7 +23,7 @@ export async function generateTitle(messages: Message[], chatId: string) {
   }
 
   // 🔥 Нормальные модели
-  const models = ["qwen/qwen3-next-80b-a3b-instruct:free"];
+  const models = ["openai/gpt-oss-120b:free"];
 
   let lastError: any = null;
 
