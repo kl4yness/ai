@@ -25,7 +25,7 @@ export async function generateTitle(messages: Message[], chatId: string) {
   // 🔥 Нормальные модели
   const models = ["deepseek/deepseek-chat-v3-0324:free",     
   "google/gemini-2.0-flash-exp:free",         
-  "openai/gpt-oss-120b:free",          
+  "nvidia/nemotron-3-super-120b-a12b:free",          
   "qwen/qwen3-next-80b-a3b-instruct:free"];
 
 
