@@ -113,73 +113,81 @@ export class CreditScoring {
   const newData = { ...currentData };
   const lowerMessage = message.toLowerCase();
 
-  // 🔥 ВАЖНО: ищем возраст ТОЛЬКО если сообщение короткое и содержит число
-  // и если это не про стаж
+  console.log("🔍 Парсим сообщение:", message);
+
+  // Возраст — ищем число, за которым следует "лет" или "год"
+  // НО не путаем со стажем
   const ageMatch = message.match(/(\d+)\s*(?:лет|год|года)/i);
-  if (ageMatch && !lowerMessage.includes('стаж') && !lowerMessage.includes('работа')) {
+  if (ageMatch && !lowerMessage.includes('стаж') && !lowerMessage.includes('работаю')) {
     const age = parseInt(ageMatch[1]);
     if (age >= 16 && age <= 100) {
       newData.age = age;
+      console.log(`✅ Распознан возраст: ${age}`);
     }
   }
 
-  // Зарплата
+  // Зарплата — ищем числа с указанием тысяч или рублей
   const salaryMatch = message.match(/(\d+)\s*(?:тыс|тысяч|руб|р\.|рублей)/i);
   if (salaryMatch) {
     let salary = parseInt(salaryMatch[1]);
     if (message.includes('тыс') || message.includes('тысяч')) salary *= 1000;
     newData.salary = salary;
+    console.log(`✅ Распознана зарплата: ${salary}`);
   }
 
-  // Работа — РАСШИРЕННОЕ РАСПОЗНАВАНИЕ
+  // Работа — расширенное распознавание
   if (lowerMessage.includes('работаю') || 
       lowerMessage.includes('трудоустроен') || 
       lowerMessage.includes('официально') ||
       lowerMessage.includes('есть работа') ||
-      (lowerMessage.includes('стаж') && !lowerMessage.includes('нет стажа'))) {
+      lowerMessage.includes('дворник') ||
+      lowerMessage.includes('охранник') ||
+      lowerMessage.includes('менеджер') ||
+      lowerMessage.includes('водитель') ||
+      lowerMessage.includes('продавец')) {
     newData.hasJob = true;
+    console.log(`✅ Распознана работа: true`);
     
     // Ищем стаж
     const yearsMatch = message.match(/(\d+)\s*(?:год|года|лет)/i);
     if (yearsMatch) {
       newData.jobYears = parseInt(yearsMatch[1]);
+      console.log(`✅ Распознан стаж: ${newData.jobYears} лет`);
     }
   }
   
   if (lowerMessage.includes('не работаю') || 
       lowerMessage.includes('безработный') ||
-      lowerMessage.includes('нет работы') ||
-      lowerMessage.includes('работы нет')) {
+      lowerMessage.includes('нет работы')) {
     newData.hasJob = false;
+    console.log(`✅ Распознана работа: false`);
   }
 
-  // Кредитная история — РАСШИРЕННОЕ РАСПОЗНАВАНИЕ
+  // Кредитная история
   if (lowerMessage.includes('идеальная') || lowerMessage.includes('отличная')) {
     newData.creditHistory = 'excellent';
+    console.log(`✅ Кредитная история: excellent`);
   }
   else if (lowerMessage.includes('хорошая')) {
     newData.creditHistory = 'good';
+    console.log(`✅ Кредитная история: good`);
   }
   else if (lowerMessage.includes('средняя') || lowerMessage.includes('нормальная')) {
     newData.creditHistory = 'fair';
+    console.log(`✅ Кредитная история: fair`);
   }
   else if (lowerMessage.includes('плохая') || lowerMessage.includes('испорчена') ||
            lowerMessage.includes('просрочк') || lowerMessage.includes('долг')) {
     newData.creditHistory = 'poor';
+    console.log(`✅ Кредитная история: poor`);
   }
   else if (lowerMessage.includes('нет истории') || 
            lowerMessage.includes('не было кредитов') ||
            lowerMessage.includes('кредитной истории нет') ||
-           lowerMessage.includes('кредитов не было')) {
+           lowerMessage.includes('кредитов не было') ||
+           lowerMessage.includes('нет кредитной')) {
     newData.creditHistory = 'none';
-  }
-
-  // Множественные кредиты
-  if (lowerMessage.includes('два кредита') || 
-      lowerMessage.includes('три кредита') ||
-      lowerMessage.includes('много кредитов')) {
-    newData.creditHistory = 'poor';
-    newData.hasOtherCredits = true;
+    console.log(`✅ Кредитная история: none`);
   }
 
   // Другие кредиты
@@ -187,15 +195,16 @@ export class CreditScoring {
       lowerMessage.includes('плачу кредит') ||
       lowerMessage.includes('два кредита')) {
     newData.hasOtherCredits = true;
+    console.log(`✅ Есть другие кредиты: true`);
   }
   
   if (lowerMessage.includes('нет других кредитов') || 
-      lowerMessage.includes('нет кредитов') ||
-      lowerMessage.includes('кредитов нет')) {
+      lowerMessage.includes('нет кредитов')) {
     newData.hasOtherCredits = false;
+    console.log(`✅ Есть другие кредиты: false`);
   }
 
-  console.log('📝 Извлечённые данные:', {
+  console.log("📝 Итоговые данные:", {
     age: newData.age,
     hasJob: newData.hasJob,
     jobYears: newData.jobYears,
