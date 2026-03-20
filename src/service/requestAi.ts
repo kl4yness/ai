@@ -84,7 +84,7 @@ export async function requestAI(messages: Message[], chatId: string) {
     ];
 
     // 🔥 НОРМАЛЬНЫЕ модели
-    const models = ["qwen/qwen3-next-80b-a3b-instruct:free"];
+    const models = ["openai/gpt-oss-120b:free"];
 
     let lastError: any = null;
 
