@@ -150,19 +150,32 @@ export async function requestAI(messages: Message[], chatId: string) {
 
         console.log("📦 Ответ модели:", data);
 
-        // ✅ Проверяем ответ
-        const answer = data?.choices?.[0]?.message?.content?.trim();
+        // Безопасно извлекаем текст из разных форматов ответа
+let answer: string | null = null;
 
-        if (!answer) {
-          console.error(`❌ Пустой ответ от ${model}`, data);
-          lastError = new Error("Empty response");
-          await delay(1500);
-          continue;
-        }
+if (data?.choices?.[0]?.message?.content) {
+  answer = data.choices[0].message.content.trim();
+} 
+else if (data?.choices?.[0]?.delta?.content) {
+  // Для стриминговых ответов
+  answer = data.choices[0].delta.content.trim();
+}
+else if (data?.choices?.[0]?.text) {
+  // Для некоторых моделей
+  answer = data.choices[0].text.trim();
+}
+else if (typeof data === 'string') {
+  // Если вдруг вернулась строка
+  answer = data.trim();
+}
 
-        // ✅ УСПЕХ
-        console.log(`✅ Успешный ответ от ${model}`);
-
+// Если не удалось извлечь текст — логируем структуру для отладки
+if (!answer) {
+  console.warn(`⚠️ Неизвестная структура ответа от ${model}:`, JSON.stringify(data, null, 2).slice(0, 500));
+  lastError = new Error("Unknown response structure");
+  await delay(1500);
+  continue;
+}
         addMessage(chatId, {
           id: nanoid(),
           role: "assistant",
