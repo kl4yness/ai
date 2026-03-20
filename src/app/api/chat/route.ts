@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }));
 
     const requestBody = {
-      model: 'openai/gpt-oss-120b:free',
+      model: 'deepseek/deepseek-chat-v3-0324:free',
       messages,
       temperature: body.temperature ?? 0.3,
       max_tokens: body.max_tokens ?? 500,
