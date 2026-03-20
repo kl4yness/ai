@@ -15,19 +15,19 @@ export async function generateTitle(messages: Message[], chatId: string) {
   // 🔧 Очищаем сообщение
   const cleanMessage = firstUserMessage
     .replace(/[^\p{L}\p{N}\s.,!?-]/gu, "")
-    .trim();
+    .trim()
+    .slice(0, 200);
 
   if (!cleanMessage) {
     setChatTitle(chatId, "Диалог");
     return;
   }
 
-  // 🔥 Модели (Gemini первая, она стабильнее)
+  // 🔥 Модели
   const models = [
+    "deepseek/deepseek-chat-v3-0324:free",  // DeepSeek ставим первой
     "google/gemini-2.0-flash-exp:free",
-    "deepseek/deepseek-chat-v3-0324:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
-    "qwen/qwen3-next-80b-a3b-instruct:free"
+    "nvidia/nemotron-3-super-120b-a12b:free"
   ];
 
   let lastError: any = null;
@@ -48,16 +48,12 @@ export async function generateTitle(messages: Message[], chatId: string) {
           model,
           messages: [
             {
-              role: "system",
-              content: "Ты — утилита для создания коротких заголовков чатов. Твоя задача: проанализировать сообщение пользователя и выдать ТОЛЬКО заголовок из 3-5 слов на русском языке. НЕ пиши ничего кроме заголовка. НЕ объясняй свои действия. НЕ используй кавычки."
-            },
-            {
               role: "user",
-              content: `Сообщение пользователя: "${cleanMessage}"\n\nЗаголовок чата (3-5 слов):`
+              content: `Кратко назови этот разговор (3-5 слов): ${cleanMessage}`
             }
           ],
-          temperature: 0.2,  // низкая температура для более детерминированного ответа
-          max_tokens: 30,
+          temperature: 0.1,  // минимальная температура для предсказуемости
+          max_tokens: 20,
         }),
         signal: controller.signal,
       });
@@ -84,17 +80,16 @@ export async function generateTitle(messages: Message[], chatId: string) {
         continue;
       }
 
-      // ✅ Извлечение с поддержкой reasoning
+      // ✅ Извлекаем ответ
       const choice = data?.choices?.[0];
       let rawTitle: string | null = null;
 
       if (choice?.message?.content?.trim()) {
         rawTitle = choice.message.content.trim();
       } else if (choice?.message?.reasoning?.trim()) {
-        console.log(`🧠 ${model} вернул заголовок через reasoning`);
-        rawTitle = choice.message.reasoning.trim();
-      } else if (choice?.delta?.content?.trim()) {
-        rawTitle = choice.delta.content.trim();
+        // Если пришло reasoning — возможно, модель не поняла задачу
+        console.warn(`⚠️ Модель ${model} вернула reasoning вместо заголовка`);
+        continue;  // пропускаем эту модель
       }
 
       if (!rawTitle) {
@@ -102,28 +97,30 @@ export async function generateTitle(messages: Message[], chatId: string) {
         continue;
       }
 
-      // 🔧 Жёсткая очистка — убираем всё, что не похоже на заголовок
+      // 🔧 Жёсткая очистка
       let title = rawTitle
-        .replace(/["'"]/g, '')                          // убираем кавычки
-        .replace(/^(заголовок|название|тема):\s*/i, '') // убираем префиксы
-        .replace(/\s+/g, ' ')                           // нормализуем пробелы
+        .replace(/["'"]/g, '')
+        .replace(/^(заголовок|название|тема|кратко|назови):?\s*/i, '')
+        .replace(/^(we need to|i need to|output|generate|create|make|provide)/i, '')
+        .replace(/\s+/g, ' ')
         .trim();
 
-      // Если получилась длинная фраза — обрезаем до 5 слов
+      // Обрезаем до 5 слов
       const words = title.split(/\s+/);
       if (words.length > 5) {
         title = words.slice(0, 5).join(' ');
       }
 
-      // Если после чистки всё ещё пусто — пропускаем модель
-      if (!title || title.length === 0) {
-        console.warn(`⚠️ Заголовок от ${model} стал пустым после чистки`);
+      // Если после чистки пусто или слишком длинно
+      if (!title || title.length === 0 || title.length > 50) {
+        console.warn(`⚠️ Заголовок от ${model} не прошёл валидацию`);
         continue;
       }
 
-      // Обрезаем длинные заголовки
-      if (title.length > 50) {
-        title = title.slice(0, 47) + "...";
+      // Дополнительная проверка: если заголовок похож на английскую инструкцию
+      if (/^(we|i|you|the|please|here|this|that)/i.test(title)) {
+        console.warn(`⚠️ Заголовок от ${model} похож на инструкцию: ${title}`);
+        continue;
       }
 
       console.log(`✅ Заголовок от ${model}: ${title}`);
@@ -145,5 +142,5 @@ export async function generateTitle(messages: Message[], chatId: string) {
   console.error("💥 Не удалось сгенерировать заголовок:", lastError);
 
   const fallback = cleanMessage.split(/\s+/).slice(0, 4).join(" ");
-  setChatTitle(chatId, fallback.slice(0, 50) || "Новый диалог");
+  setChatTitle(chatId, fallback.slice(0, 50) || "Диалог");
 }
