@@ -25,6 +25,7 @@ const Sidebar = () => {
               id: nanoid(),
               title: "Новый чат",
               createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
               messages: [],
             })
           }
