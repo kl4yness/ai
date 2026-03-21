@@ -1,90 +1,103 @@
-@use '../../styles/variables' as *;
-@use '../../styles/mixins' as *;
-
-.inputArea {
-  border-top: 1px solid $border-primary;
-  background: $bg-secondary;
-  padding: 1rem 1.5rem;
-}
-
-.inputContainer {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.attachBtn,
-.voiceBtn {
-  padding: 0.75rem;
-  display: flex;
-  color: $text-secondary;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-
-  &:hover {
-    background: $bg-hover;
-    color: $text-primary;
-  }
-}
-
-.inputWrapper {
-  flex: 1;
-  position: relative;
-}
-
-.input {
+.templatesWrapper {
   width: 100%;
-  min-height: 44px;
-  max-height: 120px;
-  padding: 0.75rem 1rem;
-  background: $bg-primary;
-  border: 1px solid $border-primary;
-  border-radius: 12px;
-  color: $text-primary;
-  font-size: 1.05rem;
-  line-height: 1.5;
-  resize: none;
-  outline: none;
-  display: flex;
-  transition: all 0.2s ease;
-
-  &::placeholder {
-    color: $text-tertiary;
-  }
-
-  &:focus {
-    border-color: $accent-primary;
-  }
+  margin-bottom: 12px;
 }
 
-.sendBtn {
-  padding: 0.75rem;
-  background: $accent-primary;
-  color: white;
-  border-radius: 8px;
+.templatesGrid {
   display: flex;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
 
-  &:hover {
-    background: $accent-hover;
+.templateBtn {
+  background: #f0f0f0;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #333;
+
+  &:hover:not(:disabled) {
+    background: #e0e0e0;
     transform: translateY(-1px);
   }
 
-  &:active {
-    transform: translateY(0);
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 
-.footer {
-  margin-top: 0.75rem;
-  text-align: center;
+.customInputWrapper {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
 }
 
-.disclaimer {
-  font-size: 0.75rem;
-  color: $text-tertiary;
+.customInput {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 24px;
+  font-size: 14px;
+  outline: none;
+
+  &:focus {
+    border-color: #0070f3;
+  }
+}
+
+.loadingIndicator {
+  text-align: center;
+  padding: 8px;
+  color: #666;
+  font-size: 12px;
+}
+
+.sendBtn {
+  background: #0070f3;
+  border: none;
+  border-radius: 24px;
+  padding: 0 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #0050b3;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// 🔥 Вынесено на правильный уровень
+.completedWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 0;
+  margin-top: 8px;
+}
+
+.completedMessage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+
+  span {
+    color: #fff;
+    flex: 1;
+  }
 }

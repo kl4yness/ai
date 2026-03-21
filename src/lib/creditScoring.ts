@@ -13,15 +13,26 @@ export class CreditScoring {
   }
 
   getRequiredFields(): string[] {
-    return ['age', 'hasJob', 'salary', 'creditHistory'];
+    return ['age', 'hasJob', 'creditHistory'];
   }
 
   hasAllData(data: UserCreditData): boolean {
+    if (data.hasJob === false) {
+      return data.age !== undefined && 
+             data.hasJob !== undefined && 
+             data.creditHistory !== undefined;
+    }
     return this.getRequiredFields().every(field => data[field as keyof UserCreditData] !== undefined);
   }
 
   getMissingFields(data: UserCreditData): string[] {
-    return this.getRequiredFields().filter(field => data[field as keyof UserCreditData] === undefined);
+    const required = this.getRequiredFields();
+    
+    if (data.hasJob === false) {
+      return required.filter(field => data[field as keyof UserCreditData] === undefined);
+    }
+    
+    return required.filter(field => data[field as keyof UserCreditData] === undefined);
   }
 
   calculateScore(data: UserCreditData): CreditScoreResult {
@@ -41,7 +52,7 @@ export class CreditScoring {
       }
     }
 
-    // Работа (макс 25)
+    // Работа и стаж (макс 25)
     if (data.hasJob) {
       if (data.jobYears && data.jobYears >= 5) score += 25;
       else if (data.jobYears && data.jobYears >= 2) score += 20;
@@ -54,18 +65,23 @@ export class CreditScoring {
       reasons.push('Отсутствие постоянной работы');
     }
 
-    // Зарплата (макс 30)
-    if (data.salary) {
-      if (data.salary >= 100000) score += 30;
-      else if (data.salary >= 70000) score += 25;
-      else if (data.salary >= 50000) score += 20;
-      else if (data.salary >= 30000) {
+    // Зарплата (макс 30) — если нет работы, доход 0
+    const salary = data.hasJob === false ? 0 : data.salary;
+    if (salary !== undefined && salary !== null) {
+      if (salary >= 100000) score += 30;
+      else if (salary >= 70000) score += 25;
+      else if (salary >= 50000) score += 20;
+      else if (salary >= 30000) {
         score += 15;
         reasons.push('Невысокий уровень дохода');
-      } else {
+      } else if (salary > 0 && salary < 30000) {
         score += 5;
         reasons.push('Доход ниже рекомендуемого');
+      } else if (salary === 0) {
+        reasons.push('Отсутствие дохода');
       }
+    } else {
+      reasons.push('Доход не указан');
     }
 
     // Кредитная история (макс 20)
@@ -110,135 +126,142 @@ export class CreditScoring {
   }
 
   extractDataFromMessage(message: string, currentData: UserCreditData): UserCreditData {
-  const newData = { ...currentData };
-  const lowerMessage = message.toLowerCase();
+    const newData = { ...currentData };
+    const lowerMessage = message.toLowerCase();
 
-  console.log("🔍 Парсим сообщение:", message);
+    console.log("🔍 Парсим сообщение:", message);
 
-  // Возраст — ищем число, за которым следует "лет" или "год"
-  // НО не путаем со стажем
-  const ageMatch = message.match(/(\d+)\s*(?:лет|год|года)/i);
-  if (ageMatch && !lowerMessage.includes('стаж') && !lowerMessage.includes('работаю')) {
-    const age = parseInt(ageMatch[1]);
-    if (age >= 16 && age <= 100) {
-      newData.age = age;
-      console.log(`✅ Распознан возраст: ${age}`);
+    // Возраст
+    const ageMatch = message.match(/(\d+)\s*(?:лет|год|года)/i);
+    if (ageMatch && !lowerMessage.includes('стаж')) {
+      const age = parseInt(ageMatch[1]);
+      if (age >= 16 && age <= 100) {
+        newData.age = age;
+        console.log(`✅ Распознан возраст: ${age}`);
+      }
     }
-  }
 
-  // Зарплата — ищем числа с указанием тысяч или рублей
-  const salaryMatch = message.match(/(\d+)\s*(?:тыс|тысяч|руб|р\.|рублей)/i);
-  if (salaryMatch) {
-    let salary = parseInt(salaryMatch[1]);
-    if (message.includes('тыс') || message.includes('тысяч')) salary *= 1000;
-    newData.salary = salary;
-    console.log(`✅ Распознана зарплата: ${salary}`);
-  }
-
-  // Работа — расширенное распознавание
-  if (lowerMessage.includes('работаю') || 
-      lowerMessage.includes('трудоустроен') || 
-      lowerMessage.includes('официально') ||
-      lowerMessage.includes('есть работа') ||
-      lowerMessage.includes('дворник') ||
-      lowerMessage.includes('охранник') ||
-      lowerMessage.includes('менеджер') ||
-      lowerMessage.includes('водитель') ||
-      lowerMessage.includes('продавец')) {
-    newData.hasJob = true;
-    console.log(`✅ Распознана работа: true`);
-    
-    // Ищем стаж
-    const yearsMatch = message.match(/(\d+)\s*(?:год|года|лет)/i);
-    if (yearsMatch) {
-      newData.jobYears = parseInt(yearsMatch[1]);
-      console.log(`✅ Распознан стаж: ${newData.jobYears} лет`);
+    // Зарплата
+    const salaryMatch = message.match(/(\d+)\s*(?:тыс|тысяч|руб|р\.|рублей)/i);
+    if (salaryMatch) {
+      let salary = parseInt(salaryMatch[1]);
+      if (message.includes('тыс') || message.includes('тысяч')) salary *= 1000;
+      newData.salary = salary;
+      console.log(`✅ Распознана зарплата: ${salary}`);
     }
-  }
-  
-  if (lowerMessage.includes('не работаю') || 
-      lowerMessage.includes('безработный') ||
-      lowerMessage.includes('нет работы')) {
-    newData.hasJob = false;
-    console.log(`✅ Распознана работа: false`);
-  }
 
-  // Кредитная история
-  if (lowerMessage.includes('идеальная') || lowerMessage.includes('отличная')) {
-    newData.creditHistory = 'excellent';
-    console.log(`✅ Кредитная история: excellent`);
-  }
-  else if (lowerMessage.includes('хорошая')) {
-    newData.creditHistory = 'good';
-    console.log(`✅ Кредитная история: good`);
-  }
-  else if (lowerMessage.includes('средняя') || lowerMessage.includes('нормальная')) {
-    newData.creditHistory = 'fair';
-    console.log(`✅ Кредитная история: fair`);
-  }
-  else if (lowerMessage.includes('плохая') || lowerMessage.includes('испорчена') ||
-           lowerMessage.includes('просрочк') || lowerMessage.includes('долг')) || lowerMessage.includes('нет')) {
-    newData.creditHistory = 'poor';
-    console.log(`✅ Кредитная история: poor`);
-  }
-  else if (lowerMessage.includes('нет истории') || 
-           lowerMessage.includes('не было кредитов') ||
-           lowerMessage.includes('кредитной истории нет') ||
-           lowerMessage.includes('кредитов не было') ||
-           lowerMessage.includes('нет') ||
-           lowerMessage.includes('нет кредитной')) {
-    newData.creditHistory = 'none';
-    console.log(`✅ Кредитная история: none`);
-  }
+    // Работа
+    if (lowerMessage.includes('не работаю') || 
+        lowerMessage.includes('безработный') ||
+        lowerMessage.includes('нет работы')) {
+      newData.hasJob = false;
+      newData.salary = 0;
+      console.log(`✅ Распознана работа: false, доход = 0`);
+    }
+    else if (lowerMessage.includes('работаю') || 
+             lowerMessage.includes('трудоустроен') || 
+             lowerMessage.includes('официально') ||
+             lowerMessage.includes('есть работа') ||
+             lowerMessage.includes('дворник') ||
+             lowerMessage.includes('охранник') ||
+             lowerMessage.includes('менеджер') ||
+             lowerMessage.includes('водитель') ||
+             lowerMessage.includes('продавец')) {
+      newData.hasJob = true;
+      console.log(`✅ Распознана работа: true`);
+      
+      const yearsMatch = message.match(/(\d+)\s*(?:год|года|лет)/i);
+      if (yearsMatch) {
+        newData.jobYears = parseInt(yearsMatch[1]);
+        console.log(`✅ Распознан стаж: ${newData.jobYears} лет`);
+      }
+    }
 
-  // Другие кредиты
-  if (lowerMessage.includes('есть кредит') || 
-      lowerMessage.includes('плачу кредит') ||
-      lowerMessage.includes('два кредита')) {
-    newData.hasOtherCredits = true;
-    console.log(`✅ Есть другие кредиты: true`);
-  }
-  
-  if (lowerMessage.includes('нет других кредитов') || 
-      lowerMessage.includes('нет кредитов')) || lowerMessage.includes('нет')) {
-    newData.hasOtherCredits = false;
-    console.log(`✅ Есть другие кредиты: false`);
-  }
+    // Кредитная история
+    if (lowerMessage.includes('идеальная') || lowerMessage.includes('отличная')) {
+      newData.creditHistory = 'excellent';
+      console.log(`✅ Кредитная история: excellent`);
+    }
+    else if (lowerMessage.includes('хорошая') || lowerMessage.includes('плачу вовремя')) {
+      newData.creditHistory = 'good';
+      console.log(`✅ Кредитная история: good`);
+    }
+    else if (lowerMessage.includes('средняя') || lowerMessage.includes('нормальная')) {
+      newData.creditHistory = 'fair';
+      console.log(`✅ Кредитная история: fair`);
+    }
+    else if (lowerMessage.includes('плохая') || lowerMessage.includes('испорчена') ||
+             lowerMessage.includes('просрочк') || lowerMessage.includes('долг')) {
+      newData.creditHistory = 'poor';
+      console.log(`✅ Кредитная история: poor`);
+    }
+    else if (lowerMessage.includes('нет истории') || 
+             lowerMessage.includes('не было кредитов') ||
+             lowerMessage.includes('кредитной истории нет') ||
+             lowerMessage.includes('кредитов не было') ||
+             lowerMessage === 'нет' ||
+             lowerMessage === 'нету') {
+      newData.creditHistory = 'none';
+      console.log(`✅ Кредитная история: none`);
+    }
 
-  console.log("📝 Итоговые данные:", {
-    age: newData.age,
-    hasJob: newData.hasJob,
-    jobYears: newData.jobYears,
-    salary: newData.salary,
-    creditHistory: newData.creditHistory,
-    hasOtherCredits: newData.hasOtherCredits
-  });
+    // Другие кредиты
+    if (lowerMessage.includes('есть кредит') || 
+        lowerMessage.includes('плачу кредит') ||
+        lowerMessage.includes('два кредита')) {
+      newData.hasOtherCredits = true;
+      console.log(`✅ Есть другие кредиты: true`);
+    }
+    else if (lowerMessage.includes('нет других кредитов') || 
+             lowerMessage.includes('нет кредитов') ||
+             lowerMessage.includes('кредитов нет') ||
+             lowerMessage === 'нет') {
+      newData.hasOtherCredits = false;
+      console.log(`✅ Есть другие кредиты: false`);
+    }
 
-  return newData;
-}
+    console.log("📝 Итоговые данные:", {
+      age: newData.age,
+      hasJob: newData.hasJob,
+      jobYears: newData.jobYears,
+      salary: newData.hasJob === false ? 0 : newData.salary,
+      creditHistory: newData.creditHistory,
+      hasOtherCredits: newData.hasOtherCredits
+    });
+
+    return newData;
+  }
 
   getSystemPrompt(userData?: UserCreditData, chatTitle?: string): string {
     const missingFields = userData ? this.getMissingFields(userData) : this.getRequiredFields();
+    const noJob = userData?.hasJob === false;
     
-    let prompt = `Ты — кредитный консультант в банке. ${
-      chatTitle ? `Ты помогаешь с темой: ${chatTitle}. ` : ''
+    let nextQuestion = "";
+    
+    if (missingFields.includes('age')) {
+      nextQuestion = "Спроси возраст.";
+    } else if (missingFields.includes('hasJob')) {
+      nextQuestion = "Спроси про наличие работы и стаж.";
+    } else if (!noJob && missingFields.includes('salary')) {
+      nextQuestion = "Спроси про ежемесячный доход.";
+    } else if (missingFields.includes('creditHistory')) {
+      nextQuestion = "Спроси про кредитную историю.";
+    } else {
+      nextQuestion = "Все данные собраны, скажи: Спасибо! Сейчас я рассчитаю предварительное решение.";
     }
+    
+    let prompt = `Ты — кредитный консультант. Собери данные строго по порядку.
 
-⚠️ КРИТИЧЕСКИ ВАЖНО: ТЫ ОТВЕЧАЕШЬ ТОЛЬКО НА ВОПРОСЫ О КРЕДИТАХ!
-Если пользователь спрашивает что-то другое, отвечай: "Я специализируюсь только на вопросах кредитования. Давайте вернемся к оформлению заявки."
-
-Собери следующие данные (по одному вопросу за раз):`;
-
-    if (missingFields.includes('age')) prompt += '\n- Возраст';
-    if (missingFields.includes('hasJob')) prompt += '\n- Наличие работы и стаж';
-    if (missingFields.includes('salary')) prompt += '\n- Ежемесячный доход';
-    if (missingFields.includes('creditHistory')) prompt += '\n- Кредитная история';
-
-    prompt += `\n\nПравила общения:
+🚨 ПРАВИЛА:
 • Задавай ТОЛЬКО ОДИН вопрос за раз
 • Не повторяй вопросы
-• Будь вежлив и профессионален
-• Если все данные собраны, скажи: "Спасибо! Сейчас я рассчитаю предварительное решение."`;
+• Будь краток — максимум одно предложение
+
+Текущий этап: ${nextQuestion}
+
+${noJob ? "⚠️ ВАЖНО: Пользователь не работает. НЕ спрашивай про работу и доход. Сразу переходи к кредитной истории." : ""}
+
+Сейчас задай один короткий вопрос.`;
 
     return prompt;
   }

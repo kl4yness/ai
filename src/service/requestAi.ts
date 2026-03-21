@@ -3,8 +3,6 @@ import { nanoid } from "nanoid";
 import type { Message } from "@/types/Message";
 import { CreditScoring } from "@/lib/creditScoring";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export async function requestAI(messages: Message[], chatId: string) {
   const { setIsLoading, chats, addMessage, setChatTitle } =
     useChatStore.getState();
@@ -14,6 +12,18 @@ export async function requestAI(messages: Message[], chatId: string) {
   try {
     const currentChat = chats[chatId];
     if (!currentChat) throw new Error("Чат не найден");
+
+    // 🔥 Если диалог уже завершён — не отвечаем
+    if (currentChat.isCompleted) {
+      addMessage(chatId, {
+        id: nanoid(),
+        role: "assistant",
+        message: "✅ Ваша заявка уже рассмотрена. Для новой заявки создайте новый чат.",
+        sendedAt: new Date().toISOString(),
+      });
+      setIsLoading(false);
+      return;
+    }
 
     let userData = currentChat.creditData || {};
     const scoring = CreditScoring.getInstance();
@@ -27,6 +37,12 @@ export async function requestAI(messages: Message[], chatId: string) {
         userData,
       );
 
+      // 🔥 Если нет работы — автоматически ставим доход 0
+      if (userData.hasJob === false && userData.salary === undefined) {
+        userData.salary = 0;
+        console.log(`💰 Автоматически установлен доход 0 (нет работы)`);
+      }
+
       useChatStore.setState({
         chats: {
           ...chats,
@@ -36,6 +52,65 @@ export async function requestAI(messages: Message[], chatId: string) {
           },
         },
       });
+
+      // 🔥🔥🔥 Если нет работы и кредитная история уже есть — сразу выдаём результат
+      if (userData.hasJob === false && userData.creditHistory !== undefined) {
+        console.log(`🎯 Нет работы, кредитная история есть — сразу считаем результат`);
+        
+        const result = scoring.calculateScore(userData);
+        
+        useChatStore.setState({
+          chats: {
+            ...chats,
+            [chatId]: {
+              ...currentChat,
+              creditData: userData,
+              creditResult: result,
+              isCompleted: true,
+            },
+          },
+        });
+
+        const finalAnswer = scoring.generateFinalResponse(result);
+        
+        addMessage(chatId, {
+          id: nanoid(),
+          role: "assistant",
+          message: finalAnswer,
+          sendedAt: new Date().toISOString(),
+        });
+        
+        if (currentChat.title === "Новый чат") {
+          setChatTitle(
+            chatId,
+            `Кредит: ${result.approved ? "✅" : "❌"} ${result.percentage}%`,
+          );
+        }
+        
+        setIsLoading(false);
+        return;
+      }
+
+      // 🔥 Если только что узнали, что нет работы — сразу переходим к кредитной истории
+      const justLearnedNoJob =
+        userData.hasJob === false && currentChat.creditData?.hasJob !== false;
+
+      if (justLearnedNoJob) {
+        console.log(`🎯 Пользователь не работает, сразу спрашиваем про кредитную историю`);
+        
+        const nextQuestion =
+          "Как у вас обстоит ситуация с кредитной историей? Были ли у вас ранее кредиты или просрочки?";
+        
+        addMessage(chatId, {
+          id: nanoid(),
+          role: "assistant",
+          message: nextQuestion,
+          sendedAt: new Date().toISOString(),
+        });
+        
+        setIsLoading(false);
+        return;
+      }
     }
 
     // 🔹 Если все данные есть — считаем локально
@@ -49,6 +124,7 @@ export async function requestAI(messages: Message[], chatId: string) {
             ...currentChat,
             creditData: userData,
             creditResult: result,
+            isCompleted: true,
           },
         },
       });
@@ -108,7 +184,6 @@ export async function requestAI(messages: Message[], chatId: string) {
 
       clearTimeout(timeoutId);
 
-      // ❌ Ошибка ответа
       if (!response.ok) {
         let errorData;
         try {
@@ -121,7 +196,6 @@ export async function requestAI(messages: Message[], chatId: string) {
         throw new Error(`API error: ${response.status}`);
       }
 
-      // ✅ Парсим JSON
       let data;
       try {
         data = await response.json();
@@ -132,7 +206,6 @@ export async function requestAI(messages: Message[], chatId: string) {
 
       console.log("📦 Ответ модели:", data);
 
-      // ✅ Простое извлечение текста
       let answer: string | null = null;
       const message = data?.choices?.[0]?.message;
 
@@ -154,7 +227,6 @@ export async function requestAI(messages: Message[], chatId: string) {
         sendedAt: new Date().toISOString(),
       });
 
-      // 🔹 Устанавливаем заголовок
       if (
         currentChat.title === "Новый чат" &&
         Object.keys(userData).length > 0
