@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, MessageSquare, Settings, User } from "lucide-react";
+import { Plus, MessageSquare } from "lucide-react";
 import styles from "./index.module.scss";
 import { useChatStore } from "@/store/chatStore";
 import type { Chat } from "@/types/Chat";
@@ -8,12 +8,12 @@ import { useMemo, memo } from "react";
 import { nanoid } from "nanoid";
 
 const Sidebar = () => {
-
-  const chats = useChatStore(state => state.chats)
-  const addChat = useChatStore(state => state.addChat)
-  const setActiveChatId = useChatStore((state) => state.setActiveChatId);
+  const chats = useChatStore(state => state.chats);
+  const addChat = useChatStore(state => state.addChat);
+  const setActiveChatId = useChatStore(state => state.setActiveChatId);
+  const activeChatId = useChatStore(state => state.activeChatId);
+  
   const chatList = useMemo(() => Object.values(chats), [chats]);
-  const activeChatId = useChatStore(state => state.activeChatId)
 
   return (
     <aside className={styles.sidebar}>
@@ -24,9 +24,9 @@ const Sidebar = () => {
             addChat({
               id: nanoid(),
               title: "Новый чат",
+              messages: [],
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              messages: [],
             })
           }
         >
