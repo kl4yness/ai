@@ -120,22 +120,7 @@ const MessageInput = () => {
       generateTitle([...currentMessages, userMessageObject], chatId);
     }
   };
-
-  const handleNewChat = () => {
-    const newId = nanoid();
-    const newChat: Chat = {
-      id: newId,
-      title: "Новый чат",
-      messages: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    addChat(newChat);
-    setActiveChatId(newId);
-    setShowCustomInput(false);
-    setCustomValue("");
-  };
-
+  
   const handleTemplateClick = (value: string) => {
     if (isLoading || isCompleted) return;
     sendMessage(value);
